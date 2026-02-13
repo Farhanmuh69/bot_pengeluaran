@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Bot Pengeluaran</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .calendar-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 5px;
+        }
+
+        .calendar-day-header {
+            text-align: center;
+            font-weight: bold;
+            padding: 10px;
+            background-color: #f3f4f6;
+            border-radius: 4px;
+        }
+
+        .calendar-day {
+            min-height: 80px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+            position: relative;
+            background-color: white;
+            transition: background-color 0.2s;
+        }
+
+        .calendar-day:hover {
+            background-color: #f9fafb;
+        }
+
+        .calendar-day.empty {
+            background-color: #f9fafb;
+            cursor: default;
+        }
+
+        .calendar-day.today {
+            border: 2px solid #6366f1;
+        }
+
+        .day-number {
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .day-total {
+            font-size: 0.8em;
+            color: #ef4444;
+            display: block;
+            background-color: #fee2e2;
+            padding: 2px 4px;
+            border-radius: 4px;
+            margin-top: 5px;
+            text-align: center;
+        }
+
+        /* Responsive Improvements */
+        @media (max-width: 600px) {
+            .calendar-day {
+                min-height: 50px;
+                padding: 2px;
+            }
+
+            .day-number {
+                font-size: 0.9em;
+                margin-bottom: 2px;
+            }
+
+            .day-total {
+                font-size: 0.65em;
+                padding: 1px 2px;
+                margin-top: 2px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            .calendar-header {
+                flex-direction: row;
+                gap: 10px;
+            }
+
+            .calendar-header h3 {
+                font-size: 1em;
+            }
+
+            .calendar-header button {
+                padding: 4px 8px;
+                font-size: 0.8em;
+            }
+
+            .calendar-day-header {
+                font-size: 0.8em;
+                padding: 5px 2px;
+            }
+
+            .search-container {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .stat-card {
+                padding: 15px;
+            }
+
+            .container {
+                padding: 10px;
+            }
+        }
+
+
+        /* Modal styles */
+        .daily-modal {
+            display: none;
+            position: fixed;
+            z-index: 1001;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(0, 0, 0, 0.4);
+        }
+
+        .daily-modal-content {
+            background-color: #fefefe;
+            margin: 10% auto;
+            padding: 20px;
+            border: 1px solid #888;
+            width: 90%;
+            max-width: 600px;
+            border-radius: 8px;
+            max-height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .daily-list {
+            overflow-y: auto;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+
+<body class="dashboard">
+    <!-- Navbar -->
+    <nav class="navbar">
+        <div class="navbar-brand">🤖 Bot Pengeluaran</div>
+        <div class="navbar-user">
+            <div class="user-info">
+                <div class="user-name" id="userName">Loading...</div>
+                <div class="user-role">User</div>
+            </div>
+            <button class="btn-settings" onclick="openSettings()"
+                style="margin-right: 10px; background: none; border: none; font-size: 1.2rem; cursor: pointer;">⚙️</button>
+            <button class="btn-logout" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal"
+        style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; overflow: auto; background-color: rgba(0,0,0,0.4);">
+        <div class="modal-content"
+            style="background-color: #fefefe; margin: 15% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 500px; border-radius: 8px;">
+            <span class="close" onclick="closeSettings()"
+                style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+            <h2>Pengaturan Akun</h2>
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="resetDate"><strong>Tanggal Reset / Gajian (1-31):</strong></label>
+                <input type="number" id="resetDate" min="1" max="31" class="form-control"
+                    style="width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px;">
+                <p style="font-size: 0.9em; color: #666; margin-top: 5px;">Pilih tanggal dimulainya siklus bulanan Anda
+                    (misal: tanggal gajian).</p>
+            </div>
+            <div style="margin-top: 20px; text-align: right;">
+                <button onclick="saveSettings()" class="btn btn-primary"
+                    style="background-color: #6366f1; color: white;">Simpan</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Daily Expense Modal -->
+    <div id="dailyModal" class="daily-modal">
+        <div class="daily-modal-content">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h2 id="dailyModalTitle">Pengeluaran Tanggal ...</h2>
+                <span class="close" onclick="closeDailyModal()" style="font-size: 28px; cursor: pointer;">&times;</span>
+            </div>
+            <div id="dailyTotalDisplay"
+                style="font-size: 1.2em; font-weight: bold; margin-bottom: 15px; color: #6366f1;">
+                Total: Rp 0
+            </div>
+            <div class="daily-list" id="dailyExpenseList">
+                <!-- List will be populated -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="container">
+        <!-- Notification Banner -->
+        <div id="resetNotification" class="alert-banner"
+            style="display: none; background-color: #fff3cd; color: #856404; padding: 15px; margin-bottom: 20px; border: 1px solid #ffeeba; border-radius: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <strong>⚠️ Perhatian:</strong> <span id="resetMessage">Periode anggaran Anda akan segera
+                        berakhir.</span>
+                </div>
+                <div>
+                    <button class="btn btn-sm btn-primary" onclick="exportData()" style="margin-right: 10px;">Export
+                        Data Sekarang</button>
+                    <button class="btn btn-sm btn-secondary" onclick="closeNotification()">Tutup</button>
+                </div>
+            </div>
+        </div>
+        <!-- Statistics Cards -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-icon">💰</div>
+                <div class="stat-label">Total Pengeluaran</div>
+                <div class="stat-value" id="totalAmount">Rp 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📊</div>
+                <div class="stat-label">Total Transaksi</div>
+                <div class="stat-value" id="totalCount">0</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #ef4444;">
+                <div class="stat-icon">📉</div>
+                <div class="stat-label">Total Hutang</div>
+                <div class="stat-value" id="totalDebt">Rp 0</div>
+            </div>
+            <div class="stat-card" style="border-left: 4px solid #22c55e;">
+                <div class="stat-icon">📈</div>
+                <div class="stat-label">Total Piutang</div>
+                <div class="stat-value" id="totalReceivable">Rp 0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📈</div>
+                <div class="stat-label">Rata-rata</div>
+                <div class="stat-value" id="avgAmount">Rp 0</div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Filter Data</h2>
+                <div id="cycleInfo" style="font-size: 0.9em; color: #666; margin-top: 5px;"></div>
+            </div>
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Tipe Transaksi</label>
+                    <select id="typeFilter"
+                        style="width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px;">
+                        <option value="">Semua</option>
+                        <option value="expense">Pengeluaran</option>
+                        <option value="debt">Hutang (Kita Berhutang)</option>
+                        <option value="receivable">Piutang (Orang Berhutang)</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Dari Tanggal</label>
+                    <input type="date" id="startDate">
+                </div>
+                <div class="filter-group">
+                    <label>Sampai Tanggal</label>
+                    <input type="date" id="endDate">
+                </div>
+                <div class="filter-group">
+                    <label>&nbsp;</label>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" onclick="applyFilter()">Terapkan Filter</button>
+                        <button class="btn btn-primary" onclick="exportData()"
+                            style="background-color: #10b981; border-color: #10b981;">Export Excel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Calendar -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Kalender Pengeluaran</h2>
+            </div>
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="btn btn-secondary" onclick="changeMonth(-1)">❮ Sebelumnya</button>
+                    <h3 id="currentMonthDisplay" style="margin: 0;">Loading...</h3>
+                    <button class="btn btn-secondary" onclick="changeMonth(1)">Selanjutnya ❯</button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Days will be populated by JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Pengeluaran per Kategori</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="categoryChart"></canvas>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Timeline Pengeluaran</h2>
+            </div>
+            <div class="chart-container">
+                <canvas id="timelineChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Expense List -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Daftar Pengeluaran</h2>
+            </div>
+            <div class="table-container">
+                <table id="expenseTable">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Kategori</th>
+                            <th>Keterangan</th>
+                            <th>Jumlah</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="expenseTableBody">
+                        <tr>
+                            <td colspan="4" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Outstanding Debts List -->
+        <div class="card" style="margin-top: 20px; border-left: 4px solid #ef4444;">
+            <div class="card-header">
+                <h2 class="card-title">Daftar Hutang Belum Lunas (Perlu Dibayar)</h2>
+            </div>
+            <div class="table-container">
+                <table id="debtTable">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Pemberi Hutang</th>
+                            <th>Keterangan</th>
+                            <th>Jumlah</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="debtTableBody">
+                        <tr>
+                            <td colspan="5" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Outstanding Receivables List -->
+        <div class="card" style="margin-top: 20px; border-left: 4px solid #22c55e;">
+            <div class="card-header">
+                <h2 class="card-title">Daftar Piutang Belum Lunas (Perlu Ditagih)</h2>
+            </div>
+            <div class="table-container">
+                <table id="receivableTable">
+                    <thead>
+                        <tr>
+                            <th>Tanggal</th>
+                            <th>Peminjam</th>
+                            <th>Keterangan</th>
+                            <th>Jumlah</th>
+                            <th>Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody id="receivableTableBody">
+                        <tr>
+                            <td colspan="5" class="loading">Loading...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        let categoryChart, timelineChart;
+
+        let currentCalendarDate = new Date();
+        let cachedExpenses = [];
+
+        // Check authentication
+        checkAuth();
+
+        // Load data
+        loadUserData();
+        loadExpenses();
+        loadStats();
+        loadOutstandingDebts();
+        loadOutstandingReceivables();
+
+        loadOutstandingReceivables();
+        renderCalendar();
+
+        function loadUserData() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            document.getElementById('userName').textContent = user.name;
+            updateCycleInfo(user.resetDate);
+            checkResetNotification(user.resetDate);
+        }
+
+        async function loadExpenses() {
+            const token = localStorage.getItem('token');
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const typeFn = document.getElementById('typeFilter').value;
+
+            let url = '/api/expenses?limit=100';
+            if (startDate) url += `&startDate=${startDate}`;
+            if (endDate) url += `&endDate=${endDate}`;
+            if (typeFn) url += `&type=${typeFn}`;
+
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    cachedExpenses = data.data.expenses; // Cache for calendar
+                    renderExpenseTable(data.data.expenses);
+                    renderCalendar(); // Re-render calendar with new data
+                } else {
+                    console.error('Failed to load expenses:', data.message);
+                }
+            } catch (error) {
+                console.error('Error loading expenses:', error);
+            }
+        }
+
+        async function loadStats() {
+            const token = localStorage.getItem('token');
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let queryParams = '';
+            if (startDate) queryParams += `&startDate=${startDate}`;
+            if (endDate) queryParams += `&endDate=${endDate}`;
+
+            try {
+                // Fetch Expenses Stats (default)
+                const expenseRes = await fetch(`/api/expenses/stats?type=expense${queryParams}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const expenseData = await expenseRes.json();
+
+                // Fetch Debt Stats
+                const debtRes = await fetch(`/api/expenses/stats?type=debt&status=pending${queryParams}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const debtData = await debtRes.json();
+
+                // Fetch Receivable Stats
+                const receivableRes = await fetch(`/api/expenses/stats?type=receivable&status=pending${queryParams}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const receivableData = await receivableRes.json();
+
+                if (expenseData.success) {
+                    renderStats(expenseData.data);
+                    renderCharts(expenseData.data);
+                }
+
+                if (debtData.success) {
+                    document.getElementById('totalDebt').textContent = formatCurrency(debtData.data.total);
+                }
+
+                if (receivableData.success) {
+                    document.getElementById('totalReceivable').textContent = formatCurrency(receivableData.data.total);
+                }
+
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        function renderStats(stats) {
+            document.getElementById('totalAmount').textContent = formatCurrency(stats.total);
+            document.getElementById('totalCount').textContent = stats.count;
+            document.getElementById('avgAmount').textContent = formatCurrency(stats.average);
+        }
+
+        function renderExpenseTable(expenses) {
+            const tbody = document.getElementById('expenseTableBody');
+
+            if (expenses.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><div class="empty-state-icon">📭</div><p>Belum ada data pengeluaran</p></td></tr>';
+                return;
+            }
+
+            tbody.innerHTML = expenses.map(exp => `
+                <tr>
+                    <td>${formatDate(exp.timestamp)}
+                        <br><small class="text-muted">${new Date(exp.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</small>
+                    </td>
+                    <td>
+                        <strong>${exp.category}</strong>
+                        ${exp.type && exp.type !== 'expense' ? `<br><span style="font-size: 0.8em; padding: 2px 4px; border-radius: 4px; background-color: ${exp.type === 'debt' ? '#fee2e2; color: #ef4444' : '#dcfce7; color: #16a34a'}">${exp.type === 'debt' ? 'Hutang' : 'Piutang'}</span>` : ''}
+                    </td>
+                    <td>${exp.description || '-'}</td>
+                    <td style="font-weight: bold; color: ${exp.type === 'expense' ? '#ef4444' : (exp.type === 'debt' ? '#ef4444' : '#16a34a')}">
+                        ${formatCurrency(exp.amount)}
+                    </td>
+                    <td>
+                        ${(exp.type === 'debt' || exp.type === 'receivable') ?
+                    (exp.status === 'paid' ?
+                        '<span class="badge badge-success" style="background-color: #d1fae5; color: #065f46; padding: 4px 8px; border-radius: 4px;">Lunas ✅</span>' :
+                        `<button class="btn btn-sm btn-primary" onclick="markAsPaid('${exp._id}', '${exp.type}')" style="font-size: 0.8em; padding: 4px 8px;">Tandai Lunas</button>`
+                    ) : '-'
+                }
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function renderCharts(stats) {
+            // Category Chart
+            const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+            if (categoryChart) categoryChart.destroy();
+
+            const categories = stats.byCategory.map(c => c.category);
+            const amounts = stats.byCategory.map(c => c.total);
+
+            categoryChart = new Chart(categoryCtx, {
+                type: 'pie',
+                data: {
+                    labels: categories,
+                    datasets: [{
+                        data: amounts,
+                        backgroundColor: [
+                            '#6366f1', '#8b5cf6', '#ec4899', '#f59e0b',
+                            '#10b981', '#3b82f6', '#ef4444', '#14b8a6'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+
+            // Timeline Chart
+            const timelineCtx = document.getElementById('timelineChart').getContext('2d');
+            if (timelineChart) timelineChart.destroy();
+
+            const dates = stats.timeline.map(t => t.date);
+            const totals = stats.timeline.map(t => t.total);
+
+            timelineChart = new Chart(timelineCtx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: [{
+                        label: 'Pengeluaran Harian',
+                        data: totals,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return 'Rp ' + value.toLocaleString('id-ID');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function applyFilter() {
+            loadExpenses();
+            loadStats();
+        }
+
+        async function loadOutstandingDebts() {
+            const token = localStorage.getItem('token');
+            try {
+                // Get ALL pending debts regardless of date range
+                const response = await fetch('/api/expenses?type=debt&status=pending&limit=100&startDate=2000-01-01&endDate=2099-12-31', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                const tbody = document.getElementById('debtTableBody');
+                if (data.success && data.data.expenses.length > 0) {
+                    tbody.innerHTML = data.data.expenses.map(exp => `
+                        <tr>
+                            <td>${formatDate(exp.timestamp)}</td>
+                            <td><strong>${exp.category}</strong></td>
+                            <td>${exp.description || '-'}</td>
+                            <td style="font-weight: bold; color: #ef4444">${formatCurrency(exp.amount)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="markAsPaid('${exp._id}', 'debt')" style="font-size: 0.8em; padding: 4px 8px;">Bayar Lunas</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><p>Tidak ada hutang yang belum lunas</p></td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading debts:', error);
+            }
+        }
+
+        async function loadOutstandingReceivables() {
+            const token = localStorage.getItem('token');
+            try {
+                // Get ALL pending receivables regardless of date range
+                const response = await fetch('/api/expenses?type=receivable&status=pending&limit=100&startDate=2000-01-01&endDate=2099-12-31', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+
+                const tbody = document.getElementById('receivableTableBody');
+                if (data.success && data.data.expenses.length > 0) {
+                    tbody.innerHTML = data.data.expenses.map(exp => `
+                        <tr>
+                            <td>${formatDate(exp.timestamp)}</td>
+                            <td><strong>${exp.category}</strong></td>
+                            <td>${exp.description || '-'}</td>
+                            <td style="font-weight: bold; color: #16a34a">${formatCurrency(exp.amount)}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="markAsPaid('${exp._id}', 'receivable')" style="font-size: 0.8em; padding: 4px 8px; background-color: #10b981; border-color: #10b981;">Tandai Lunas</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="5" class="empty-state"><p>Tidak ada piutang yang belum lunas</p></td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading receivables:', error);
+            }
+        }
+
+        async function exportData() {
+            const token = localStorage.getItem('token');
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+
+            let url = '/api/expenses/export?';
+            if (startDate) url += `startDate=${startDate}&`;
+            if (endDate) url += `endDate=${endDate}&`;
+
+            try {
+                // Show loading state
+                const btn = document.querySelector('button[onclick="exportData()"]');
+                const originalText = btn.textContent;
+                btn.textContent = 'Downloading...';
+                btn.disabled = true;
+
+                const response = await fetch(url, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `pengeluaran_${new Date().getTime()}.xlsx`;
+                    document.body.appendChild(a);
+                    a.click();
+                    a.remove();
+                    window.URL.revokeObjectURL(url);
+                } else {
+                    console.error('Export failed');
+                    alert('Gagal mengexport data');
+                }
+
+                // Restore button state
+                btn.textContent = originalText;
+                btn.disabled = false;
+
+            } catch (error) {
+                console.error('Error exporting data:', error);
+                alert('Terjadi kesalahan saat export data');
+
+                const btn = document.querySelector('button[onclick="exportData()"]');
+                btn.textContent = 'Export Excel';
+            }
+        }
+
+        async function markAsPaid(id, type) {
+            if (!confirm('Apakah Anda yakin ingin mengganti status transaksi ini menjadi LUNAS?')) return;
+
+            const token = localStorage.getItem('token');
+            try {
+                const response = await fetch(`/api/expenses/${id}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ status: 'paid' })
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    loadExpenses();
+                    loadStats();
+                    loadOutstandingDebts();
+                    loadOutstandingReceivables();
+                } else {
+                    alert('Gagal memperbarui status: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Terjadi kesalahan saat memperbarui status');
+            }
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            }).format(amount);
+        }
+
+        function formatDate(dateString) {
+            return new Date(dateString).toLocaleDateString('id-ID', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+
+        async function saveSettings() {
+            const token = localStorage.getItem('token');
+            const resetDate = document.getElementById('resetDate').value;
+
+            if (!resetDate || resetDate < 1 || resetDate > 31) {
+                alert('Tanggal reset harus antara 1-31');
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/auth/profile', {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ resetDate })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert('Pengaturan berhasil disimpan');
+                    closeSettings();
+
+                    // Update local storage user
+                    let user = JSON.parse(localStorage.getItem('user'));
+                    user.resetDate = parseInt(resetDate);
+                    localStorage.setItem('user', JSON.stringify(user));
+
+                    // Reload data
+                    updateCycleInfo(user.resetDate);
+                    // Clear custom filters to show default cycle
+                    document.getElementById('startDate').value = '';
+                    document.getElementById('endDate').value = '';
+                    loadExpenses();
+                    loadStats();
+                } else {
+                    alert('Gagal menyimpan pengaturan: ' + data.message);
+                }
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Terjadi kesalahan saat menyimpan pengaturan');
+            }
+        }
+
+        function openSettings() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            document.getElementById('resetDate').value = user.resetDate || 1;
+            document.getElementById('settingsModal').style.display = 'block';
+        }
+
+        function closeSettings() {
+            document.getElementById('settingsModal').style.display = 'none';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const modal = document.getElementById('settingsModal');
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        }
+
+        function updateCycleInfo(resetDate) {
+            const range = getCycleDateRange(resetDate || 1);
+            const startStr = range.startDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            const endStr = range.endDate.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+            document.getElementById('cycleInfo').textContent = `Periode Anggaran: ${startStr} - ${endStr}`;
+        }
+
+        function getCycleDateRange(resetDate) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            const currentMonth = now.getMonth();
+            const currentDay = now.getDate();
+
+            function getValidDate(year, month, day) {
+                const date = new Date(year, month, 1);
+                const lastDayOfMonth = new Date(year, month + 1, 0).getDate();
+                date.setDate(Math.min(day, lastDayOfMonth));
+                return date;
+            };
+
+            let startDate, endDate;
+
+            if (currentDay >= resetDate) {
+                startDate = getValidDate(currentYear, currentMonth, resetDate);
+                const nextMonthStart = getValidDate(currentYear, currentMonth + 1, resetDate);
+                endDate = new Date(nextMonthStart);
+                endDate.setDate(endDate.getDate() - 1);
+            } else {
+                startDate = getValidDate(currentYear, currentMonth - 1, resetDate);
+                const thisMonthStart = getValidDate(currentYear, currentMonth, resetDate);
+                endDate = new Date(thisMonthStart);
+                endDate.setDate(endDate.getDate() - 1);
+            }
+
+            return { startDate, endDate };
+        }
+
+        function closeNotification() {
+            document.getElementById('resetNotification').style.display = 'none';
+        }
+
+        function checkResetNotification(resetDate) {
+            const range = getCycleDateRange(resetDate || 1);
+            const now = new Date();
+            const endDate = range.endDate;
+
+            // Calculate remaining days
+            const timeDiff = endDate.getTime() - now.getTime();
+            const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24));
+
+            // Show notification if 3 days or less remaining
+            if (daysDiff >= 0 && daysDiff <= 3) {
+                const message = `Periode anggaran Anda akan berakhir dalam ${daysDiff} hari (tgl ${endDate.getDate()}). Silakan unduh data sebelum direset.`;
+                document.getElementById('resetMessage').textContent = message;
+                document.getElementById('resetNotification').style.display = 'block';
+            }
+        }
+
+        function checkAuth() {
+            if (!localStorage.getItem('token')) {
+                window.location.href = '/';
+            }
+        }
+
+        // --- Calendar Functions ---
+
+        async function renderCalendar() {
+            const year = currentCalendarDate.getFullYear();
+            const month = currentCalendarDate.getMonth();
+
+            // Set header
+            const monthNames = ["Januari", "Februari", "Maret", "April", "Mei", "Juni",
+                "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            document.getElementById('currentMonthDisplay').textContent = `${monthNames[month]} ${year}`;
+
+            const grid = document.getElementById('calendarGrid');
+            grid.innerHTML = '';
+
+            // Add day headers
+            const days = ['Min', 'Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab'];
+            days.forEach(day => {
+                const dayHeader = document.createElement('div');
+                dayHeader.className = 'calendar-day-header';
+                dayHeader.textContent = day;
+                grid.appendChild(dayHeader);
+            });
+
+            // Calculate expenses per day from cachedExpenses
+            // Note: cachedExpenses might be filtered by range, so for full calendar we might need separate fetch
+            // For now let's use cachedExpenses but ideally we want fetch for specific month
+            // Let's optimize: fetch expenses for this month to be sure
+            const token = localStorage.getItem('token');
+            const startOfMonth = new Date(year, month, 1);
+            const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59);
+
+            let monthlyExpenses = [];
+            try {
+                const response = await fetch(`/api/expenses?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}&limit=1000`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const data = await response.json();
+                if (data.success) monthlyExpenses = data.data.expenses;
+            } catch (e) {
+                console.error("Error fetching calendar data", e);
+            }
+
+            const expensesByDay = {};
+            monthlyExpenses.forEach(exp => {
+                const d = new Date(exp.timestamp);
+                const dayKey = d.getDate();
+                if (!expensesByDay[dayKey]) expensesByDay[dayKey] = { total: 0, items: [] };
+                expensesByDay[dayKey].total += exp.amount;
+                expensesByDay[dayKey].items.push(exp);
+            });
+
+            // First day of month (0-6)
+            const firstDayIndex = new Date(year, month, 1).getDay();
+
+            // Previous month empty slots
+            for (let i = 0; i < firstDayIndex; i++) {
+                const emptyCell = document.createElement('div');
+                emptyCell.className = 'calendar-day empty';
+                grid.appendChild(emptyCell);
+            }
+
+            // Days of month
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const today = new Date();
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'calendar-day';
+
+                // Check if today
+                if (i === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
+                    cell.classList.add('today');
+                }
+
+                let content = `<span class="day-number">${i}</span>`;
+
+                if (expensesByDay[i]) {
+                    content += `<span class="day-total">${formatCurrencySimple(expensesByDay[i].total)}</span>`;
+                    cell.onclick = () => openDailyModal(i, month, year, expensesByDay[i]);
+                } else {
+                    cell.onclick = () => openDailyModal(i, month, year, { total: 0, items: [] });
+                }
+
+                cell.innerHTML = content;
+                grid.appendChild(cell);
+            }
+        }
+
+        function changeMonth(delta) {
+            currentCalendarDate.setMonth(currentCalendarDate.getMonth() + delta);
+            renderCalendar();
+        }
+
+        function openDailyModal(day, month, year, data) {
+            const dateStr = new Date(year, month, day).toLocaleDateString('id-ID', {
+                dateStyle: 'full'
+            });
+
+            document.getElementById('dailyModalTitle').textContent = dateStr;
+            document.getElementById('dailyTotalDisplay').textContent = `Total: ${formatCurrency(data.total)}`;
+
+            const list = document.getElementById('dailyExpenseList');
+            if (data.items.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #666;">Tidak ada pengeluaran.</p>';
+            } else {
+                list.innerHTML = data.items.map(exp => `
+                    <div style="border-bottom: 1px solid #eee; padding: 10px 0;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <strong>${exp.category}</strong>
+                            <span style="font-weight: bold;">${formatCurrency(exp.amount)}</span>
+                        </div>
+                        <div style="color: #666; font-size: 0.9em; margin-top: 5px;">
+                            ${exp.description || '-'}
+                        </div>
+                         <div style="font-size: 0.8em; color: #999; margin-top: 3px;">
+                            ${new Date(exp.timestamp).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            document.getElementById('dailyModal').style.display = 'block';
+        }
+
+        function closeDailyModal() {
+            document.getElementById('dailyModal').style.display = 'none';
+        }
+
+        function formatCurrencySimple(amount) {
+            if (amount >= 1000000) return (amount / 1000000).toFixed(1) + 'jt';
+            if (amount >= 1000) return (amount / 1000).toFixed(0) + 'k';
+            return amount;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function (event) {
+            const settingsModal = document.getElementById('settingsModal');
+            const dailyModal = document.getElementById('dailyModal');
+            if (event.target == settingsModal) {
+                settingsModal.style.display = "none";
+            }
+            if (event.target == dailyModal) {
+                dailyModal.style.display = "none";
+            }
+        }
+    </script>
+</body>
+
+</html>

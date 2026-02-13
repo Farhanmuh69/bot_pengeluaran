@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Bot Pengeluaran</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <style>
+        .login-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            background: #f1f5f9;
+            padding: 4px;
+            border-radius: 12px;
+        }
+
+        .login-tab {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #64748b;
+            transition: all 0.3s;
+        }
+
+        .login-tab.active {
+            background: white;
+            color: #6366f1;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-mode {
+            display: none;
+        }
+
+        .login-mode.active {
+            display: block;
+        }
+
+        .otp-section {
+            display: none;
+        }
+
+        .otp-section.active {
+            display: block;
+        }
+
+        .countdown-timer {
+            text-align: center;
+            margin-top: 12px;
+            color: #64748b;
+            font-size: 0.9rem;
+        }
+
+        .countdown-timer.expired {
+            color: #ef4444;
+        }
+
+        .resend-btn {
+            background: none;
+            border: none;
+            color: #6366f1;
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.9rem;
+            margin-top: 8px;
+        }
+
+        .resend-btn:disabled {
+            color: #94a3b8;
+            cursor: not-allowed;
+            text-decoration: none;
+        }
+
+        .success-message {
+            background: #10b981;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .register-link {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .register-link a {
+            color: #6366f1;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .register-link a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-header">
+                <h1>🤖 Bot Pengeluaran</h1>
+                <p>Sistem Pencatatan Pengeluaran WhatsApp</p>
+            </div>
+
+            <!-- Login Tabs -->
+            <div class="login-tabs">
+                <button class="login-tab active" data-mode="password">
+                    🔑 Password
+                </button>
+                <button class="login-tab" data-mode="otp">
+                    📱 Kode OTP
+                </button>
+            </div>
+
+            <div id="successMessage" class="success-message"></div>
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+            <!-- Password Login Mode -->
+            <div id="passwordMode" class="login-mode active">
+                <form id="passwordLoginForm" class="login-form">
+                    <div class="form-group">
+                        <label for="passwordPhone">Nomor WhatsApp / Username</label>
+                        <input type="text" id="passwordPhone" name="phoneNumber" placeholder="628123456789 atau admin"
+                            required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" placeholder="Masukkan password" required>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary" id="passwordLoginBtn">
+                        <span>Login</span>
+                    </button>
+                </form>
+
+                <div class="login-footer">
+                    <p class="hint">💡 <strong>Hint:</strong> Admin login dengan username: <code>admin</code></p>
+                </div>
+            </div>
+
+            <!-- OTP Login Mode -->
+            <div id="otpMode" class="login-mode">
+                <!-- Step 1: Request OTP -->
+                <div id="requestOtpSection">
+                    <form id="requestOtpForm" class="login-form">
+                        <div class="form-group">
+                            <label for="otpPhone">Nomor WhatsApp</label>
+                            <input type="text" id="otpPhone" name="phoneNumber" placeholder="628123456789" required>
+                            <small style="color: #64748b; display: block; margin-top: 4px;">
+                                Masukkan nomor yang sudah terdaftar
+                            </small>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary" id="requestOtpBtn">
+                            <span>Kirim Kode OTP</span>
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Step 2: Verify OTP -->
+                <div id="verifyOtpSection" class="otp-section">
+                    <form id="verifyOtpForm" class="login-form">
+                        <div class="form-group">
+                            <label for="otpCode">Kode OTP</label>
+                            <input type="text" id="otpCode" name="otpCode" placeholder="Masukkan 6 digit kode"
+                                maxlength="6" pattern="[0-9]{6}" required>
+                            <small style="color: #64748b; display: block; margin-top: 4px;">
+                                Cek WhatsApp Anda untuk kode OTP
+                            </small>
+                        </div>
+
+                        <div class="countdown-timer" id="countdownTimer"></div>
+
+                        <button type="submit" class="btn btn-primary" id="verifyOtpBtn">
+                            <span>Verifikasi & Login</span>
+                        </button>
+
+                        <div style="text-align: center;">
+                            <button type="button" class="resend-btn" id="resendOtpBtn" disabled>
+                                Kirim Ulang Kode
+                            </button>
+                        </div>
+
+                        <div style="text-align: center; margin-top: 12px;">
+                            <button type="button" class="btn btn-secondary btn-sm" id="changeNumberBtn">
+                                Ganti Nomor
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="login-footer">
+                    <p class="hint">📱 Kode OTP akan dikirim via WhatsApp</p>
+                </div>
+            </div>
+
+            <!-- Register Link -->
+            <div class="register-link">
+                <p>Belum punya akun? <a href="/register">Daftar Sekarang</a></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Tab switching
+        const tabs = document.querySelectorAll('.login-tab');
+        const modes = document.querySelectorAll('.login-mode');
+        const errorMessage = document.getElementById('errorMessage');
+        const successMessage = document.getElementById('successMessage');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const mode = tab.dataset.mode;
+
+                // Update tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+
+                // Update modes
+                modes.forEach(m => m.classList.remove('active'));
+                document.getElementById(mode + 'Mode').classList.add('active');
+
+                // Clear messages
+                errorMessage.style.display = 'none';
+                successMessage.style.display = 'none';
+            });
+        });
+
+        // Password Login
+        const passwordLoginForm = document.getElementById('passwordLoginForm');
+        const passwordLoginBtn = document.getElementById('passwordLoginBtn');
+
+        passwordLoginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const phoneNumber = document.getElementById('passwordPhone').value.trim();
+            const password = document.getElementById('password').value;
+
+            passwordLoginBtn.disabled = true;
+            passwordLoginBtn.innerHTML = '<span>Loading...</span>';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+
+                    if (data.data.user.role === 'admin') {
+                        window.location.href = '/admin';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                } else {
+                    errorMessage.textContent = data.message || 'Login gagal';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Login error:', error);
+                errorMessage.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                errorMessage.style.display = 'block';
+            } finally {
+                passwordLoginBtn.disabled = false;
+                passwordLoginBtn.innerHTML = '<span>Login</span>';
+            }
+        });
+
+        // OTP Login
+        let otpCountdown;
+        let currentPhoneNumber = '';
+
+        const requestOtpForm = document.getElementById('requestOtpForm');
+        const requestOtpBtn = document.getElementById('requestOtpBtn');
+        const requestOtpSection = document.getElementById('requestOtpSection');
+        const verifyOtpSection = document.getElementById('verifyOtpSection');
+        const verifyOtpForm = document.getElementById('verifyOtpForm');
+        const verifyOtpBtn = document.getElementById('verifyOtpBtn');
+        const resendOtpBtn = document.getElementById('resendOtpBtn');
+        const changeNumberBtn = document.getElementById('changeNumberBtn');
+        const countdownTimer = document.getElementById('countdownTimer');
+
+        requestOtpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await requestOTP();
+        });
+
+        async function requestOTP() {
+            currentPhoneNumber = document.getElementById('otpPhone').value.trim();
+
+            requestOtpBtn.disabled = true;
+            requestOtpBtn.innerHTML = '<span>Mengirim...</span>';
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/request-login-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber: currentPhoneNumber })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successMessage.textContent = data.message;
+                    successMessage.style.display = 'block';
+
+                    // Show OTP input section
+                    requestOtpSection.style.display = 'none';
+                    verifyOtpSection.classList.add('active');
+
+                    // Start countdown
+                    startCountdown(300); // 5 minutes
+                } else {
+                    errorMessage.textContent = data.message || 'Gagal mengirim OTP';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Request OTP error:', error);
+                errorMessage.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                errorMessage.style.display = 'block';
+            } finally {
+                requestOtpBtn.disabled = false;
+                requestOtpBtn.innerHTML = '<span>Kirim Kode OTP</span>';
+            }
+        }
+
+        verifyOtpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const otpCode = document.getElementById('otpCode').value.trim();
+
+            verifyOtpBtn.disabled = true;
+            verifyOtpBtn.innerHTML = '<span>Memverifikasi...</span>';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/login-otp', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: currentPhoneNumber,
+                        otpCode
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+
+                    clearInterval(otpCountdown);
+                    window.location.href = '/dashboard';
+                } else {
+                    errorMessage.textContent = data.message || 'Kode OTP salah';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Verify OTP error:', error);
+                errorMessage.textContent = 'Terjadi kesalahan. Silakan coba lagi.';
+                errorMessage.style.display = 'block';
+            } finally {
+                verifyOtpBtn.disabled = false;
+                verifyOtpBtn.innerHTML = '<span>Verifikasi & Login</span>';
+            }
+        });
+
+        resendOtpBtn.addEventListener('click', async () => {
+            await requestOTP();
+        });
+
+        changeNumberBtn.addEventListener('click', () => {
+            requestOtpSection.style.display = 'block';
+            verifyOtpSection.classList.remove('active');
+            document.getElementById('otpCode').value = '';
+            clearInterval(otpCountdown);
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        });
+
+        function startCountdown(seconds) {
+            let remaining = seconds;
+            resendOtpBtn.disabled = true;
+
+            otpCountdown = setInterval(() => {
+                const minutes = Math.floor(remaining / 60);
+                const secs = remaining % 60;
+
+                countdownTimer.textContent = `Kode berlaku ${minutes}:${secs.toString().padStart(2, '0')}`;
+                countdownTimer.classList.remove('expired');
+
+                remaining--;
+
+                if (remaining < 0) {
+                    clearInterval(otpCountdown);
+                    countdownTimer.textContent = 'Kode OTP telah kadaluarsa';
+                    countdownTimer.classList.add('expired');
+                    resendOtpBtn.disabled = false;
+                }
+            }, 1000);
+        }
+
+        // Check if already logged in
+        if (localStorage.getItem('token')) {
+            const user = JSON.parse(localStorage.getItem('user'));
+            if (user.role === 'admin') {
+                window.location.href = '/admin';
+            } else {
+                window.location.href = '/dashboard';
+            }
+        }
+    </script>
+</body>
+
+</html>

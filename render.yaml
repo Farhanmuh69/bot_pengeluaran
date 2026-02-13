@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: bot-pengeluaran
+    env: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: "18"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: WEBSITE_URL
+        sync: false
+      - key: PORT
+        value: "3000"
