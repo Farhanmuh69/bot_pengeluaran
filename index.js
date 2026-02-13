@@ -43,7 +43,7 @@ async function main() {
         }
     });
 
-    const PORT = process.env.PORT || 3000;
+    const PORT = process.env.PORT;
 
     // Store WhatsApp status globally
     global.whatsappStatus = {
@@ -185,17 +185,17 @@ async function main() {
         console.log('━'.repeat(60));
         console.log('🤖 WhatsApp Bot: AKTIF');
         console.log('🌐 Web Dashboard: AKTIF');
-        console.log('━'.repeat(60));
-        console.log(`📡 Server: http://localhost:${PORT}`);
-        console.log(`📊 Dashboard: http://localhost:${PORT}/dashboard`);
-        console.log(`👨‍💼 Admin Panel: http://localhost:${PORT}/admin`);
-        console.log('━'.repeat(60));
-        console.log('\n💡 Cara menggunakan:');
-        console.log('   1. Scan QR code WhatsApp (jika belum)');
-        console.log('   2. Kirim pesan: keluar 25000 makan siang');
-        console.log('   3. Buka browser: http://localhost:3000');
-        console.log('   4. Login admin: username=admin, password=admin123');
-        console.log('━'.repeat(60) + '\n');
+        // console.log('━'.repeat(60));
+        // console.log(`📡 Server: http://localhost:${PORT}`);
+        // console.log(`📊 Dashboard: http://localhost:${PORT}/dashboard`);
+        // console.log(`👨‍💼 Admin Panel: http://localhost:${PORT}/admin`);
+        // console.log('━'.repeat(60));
+        // console.log('\n💡 Cara menggunakan:');
+        // console.log('   1. Scan QR code WhatsApp (jika belum)');
+        // console.log('   2. Kirim pesan: keluar 25000 makan siang');
+        // console.log('   3. Buka browser: http://localhost:3000');
+        // console.log('   4. Login admin: username=admin, password=admin123');
+        // console.log('━'.repeat(60) + '\n');
     });
 
     // Graceful shutdown

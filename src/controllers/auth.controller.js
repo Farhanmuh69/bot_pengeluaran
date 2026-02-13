@@ -1,6 +1,6 @@
 const User = require('../models/User');
 const { generateToken } = require('../utils/jwt');
-const { sendOTP, verifyOTP, hasValidOTP } = require('../utils/otpService');
+const { sendOTP, verifyOTP, hasValidOTP, sendWelcomeMessage } = require('../utils/otpService');
 const { normalizePhoneNumber } = require('../utils/phoneNormalizer');
 
 /**
@@ -165,6 +165,10 @@ async function register(req, res) {
         await user.save();
 
         console.log(`✅ User registered successfully: ${user._id}`);
+
+        // Send welcome message via WhatsApp
+        // We don't await this to avoid blocking the response
+        sendWelcomeMessage(user.phoneNumber, user.name);
 
         // Generate token for auto-login
         const token = generateToken({
@@ -363,6 +367,91 @@ async function updateProfile(req, res) {
     }
 }
 
+/**
+ * Request OTP for password reset
+ */
+async function requestResetPasswordOTP(req, res) {
+    try {
+        let { phoneNumber } = req.body;
+
+        if (!phoneNumber) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phone number harus diisi'
+            });
+        }
+
+        phoneNumber = normalizePhoneNumber(phoneNumber);
+
+        // Check if user exists
+        const user = await User.findOne({ phoneNumber });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'Nomor WhatsApp tidak terdaftar'
+            });
+        }
+
+        // Send OTP via WhatsApp
+        const result = await sendOTP(phoneNumber, 'password_reset');
+
+        res.json(result);
+    } catch (error) {
+        console.error('Request reset password OTP error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error saat meminta kode OTP'
+        });
+    }
+}
+
+/**
+ * Reset password using OTP
+ */
+async function resetPasswordWithOTP(req, res) {
+    try {
+        let { phoneNumber, otpCode, newPassword } = req.body;
+
+        if (!phoneNumber || !otpCode || !newPassword) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phone number, OTP code, dan password baru harus diisi'
+            });
+        }
+
+        phoneNumber = normalizePhoneNumber(phoneNumber);
+
+        // Verify OTP
+        const otpResult = await verifyOTP(phoneNumber, otpCode);
+        if (!otpResult.success) {
+            return res.status(400).json(otpResult);
+        }
+
+        // Find user and update password
+        const user = await User.findOne({ phoneNumber });
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: 'User tidak ditemukan'
+            });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Password berhasil diperbarui. Silakan login dengan password baru Anda.'
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error saat mereset password'
+        });
+    }
+}
+
 module.exports = {
     login,
     register,
@@ -370,5 +459,7 @@ module.exports = {
     requestLoginOTP,
     loginWithOTP,
     getMe,
-    updateProfile
+    updateProfile,
+    requestResetPasswordOTP,
+    resetPasswordWithOTP
 };

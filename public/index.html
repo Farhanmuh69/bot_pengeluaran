@@ -143,6 +143,11 @@
                     <button type="submit" class="btn btn-primary" id="passwordLoginBtn">
                         <span>Login</span>
                     </button>
+
+                    <div style="text-align: right; margin-top: 12px;">
+                        <a href="#" id="forgotPasswordLink"
+                            style="font-size: 0.9rem; color: #6366f1; text-decoration: none;">Lupa Password?</a>
+                    </div>
                 </form>
 
                 <div class="login-footer">
@@ -203,6 +208,48 @@
 
                 <div class="login-footer">
                     <p class="hint">📱 Kode OTP akan dikirim via WhatsApp</p>
+                </div>
+            </div>
+
+            <!-- Forgot Password Mode -->
+            <div id="forgotPasswordMode" class="login-mode">
+                <!-- Step 1: Request Reset OTP -->
+                <div id="requestResetSection">
+                    <form id="requestResetForm" class="login-form">
+                        <div class="form-group">
+                            <label for="resetPhone">Nomor WhatsApp</label>
+                            <input type="text" id="resetPhone" placeholder="628123456789" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="requestResetBtn">
+                            <span>Kirim Kode Reset</span>
+                        </button>
+                        <div style="text-align: center; margin-top: 12px;">
+                            <a href="#" class="back-to-login"
+                                style="font-size: 0.9rem; color: #64748b; text-decoration: none;">Kembali ke Login</a>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Step 2: Reset Password -->
+                <div id="resetPasswordSection" class="otp-section">
+                    <form id="resetPasswordForm" class="login-form">
+                        <div class="form-group">
+                            <label for="resetOtpCode">Kode OTP</label>
+                            <input type="text" id="resetOtpCode" placeholder="Masukkan 6 digit kode" maxlength="6"
+                                required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPassword">Password Baru</label>
+                            <input type="password" id="newPassword" placeholder="Masukkan password baru" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary" id="resetPasswordBtn">
+                            <span>Reset Password</span>
+                        </button>
+                        <div style="text-align: center; margin-top: 12px;">
+                            <a href="#" class="back-to-login"
+                                style="font-size: 0.9rem; color: #64748b; text-decoration: none;">Batal</a>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -397,6 +444,113 @@
             clearInterval(otpCountdown);
             errorMessage.style.display = 'none';
             successMessage.style.display = 'none';
+        });
+
+        // Forgot Password Logic
+        const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+        const forgotPasswordMode = document.getElementById('forgotPasswordMode');
+        const requestResetForm = document.getElementById('requestResetForm');
+        const requestResetBtn = document.getElementById('requestResetBtn');
+        const resetPasswordForm = document.getElementById('resetPasswordForm');
+        const resetPasswordBtn = document.getElementById('resetPasswordBtn');
+        const requestResetSection = document.getElementById('requestResetSection');
+        const resetPasswordSection = document.getElementById('resetPasswordSection');
+        const backToLoginLinks = document.querySelectorAll('.back-to-login');
+
+        forgotPasswordLink.addEventListener('click', (e) => {
+            e.preventDefault();
+            modes.forEach(m => m.classList.remove('active'));
+            tabs.forEach(t => t.classList.remove('active'));
+            forgotPasswordMode.classList.add('active');
+            errorMessage.style.display = 'none';
+            successMessage.style.display = 'none';
+        });
+
+        backToLoginLinks.forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                modes.forEach(m => m.classList.remove('active'));
+                document.getElementById('passwordMode').classList.add('active');
+                document.querySelector('[data-mode="password"]').classList.add('active');
+                requestResetSection.style.display = 'block';
+                resetPasswordSection.classList.remove('active');
+            });
+        });
+
+        requestResetForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const phoneNumber = document.getElementById('resetPhone').value.trim();
+            currentPhoneNumber = phoneNumber;
+
+            requestResetBtn.disabled = true;
+            requestResetBtn.innerHTML = '<span>Mengirim...</span>';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/request-reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phoneNumber })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    successMessage.textContent = 'Kode reset telah dikirim ke WhatsApp Anda';
+                    successMessage.style.display = 'block';
+                    requestResetSection.style.display = 'none';
+                    resetPasswordSection.classList.add('active');
+                } else {
+                    errorMessage.textContent = data.message || 'Gagal mengirim kode reset';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Request reset error:', error);
+                errorMessage.textContent = 'Terjadi kesalahan';
+                errorMessage.style.display = 'block';
+            } finally {
+                requestResetBtn.disabled = false;
+                requestResetBtn.innerHTML = '<span>Kirim Kode Reset</span>';
+            }
+        });
+
+        resetPasswordForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const otpCode = document.getElementById('resetOtpCode').value.trim();
+            const newPassword = document.getElementById('newPassword').value;
+
+            resetPasswordBtn.disabled = true;
+            resetPasswordBtn.innerHTML = '<span>Memproses...</span>';
+            errorMessage.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/auth/reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        phoneNumber: currentPhoneNumber,
+                        otpCode,
+                        newPassword
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    alert(data.message);
+                    location.reload();
+                } else {
+                    errorMessage.textContent = data.message || 'Gagal mereset password';
+                    errorMessage.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('Reset password error:', error);
+                errorMessage.textContent = 'Terjadi kesalahan';
+                errorMessage.style.display = 'block';
+            } finally {
+                resetPasswordBtn.disabled = false;
+                resetPasswordBtn.innerHTML = '<span>Reset Password</span>';
+            }
         });
 
         function startCountdown(seconds) {

@@ -69,6 +69,12 @@ async function sendOTP(phoneNumber, purpose = 'registration') {
             message = `🔐 *Kode Verifikasi Login*\n\n`;
             message += `Kode OTP Anda: *${otp.code}*\n\n`;
             message += `Kode ini berlaku selama 5 menit.`;
+        } else if (purpose === 'password_reset') {
+            message = `🔐 *Kode Verifikasi Reset Password*\n\n`;
+            message += `Kode OTP Anda: *${otp.code}*\n\n`;
+            message += `Gunakan kode ini untuk mereset password Anda.\n`;
+            message += `Kode ini berlaku selama 5 menit.\n`;
+            message += `Jangan bagikan kode ini kepada siapapun.`;
         }
 
         // Check if number is registered on WhatsApp
@@ -149,6 +155,27 @@ async function hasValidOTP(phoneNumber) {
 }
 
 /**
+ * Send welcome message with rules upon successful registration
+ */
+async function sendWelcomeMessage(phoneNumber, name) {
+    try {
+        if (!whatsappClient) {
+            console.error('❌ WhatsApp client not set in otpService');
+            return;
+        }
+
+        const botConfig = require('../config/botConfig');
+        const whatsappNumber = formatPhoneForWhatsApp(phoneNumber);
+        const message = botConfig.messages.welcome(name);
+
+        await whatsappClient.sendMessage(whatsappNumber, message);
+        console.log(`✅ Welcome message sent to ${phoneNumber}`);
+    } catch (error) {
+        console.error('❌ Error sending welcome message:', error);
+    }
+}
+
+/**
  * Clean up expired OTPs (optional, TTL index handles this automatically)
  */
 async function cleanupExpiredOTPs() {
@@ -170,5 +197,6 @@ module.exports = {
     verifyOTP,
     hasValidOTP,
     cleanupExpiredOTPs,
-    formatPhoneForWhatsApp
+    formatPhoneForWhatsApp,
+    sendWelcomeMessage
 };
