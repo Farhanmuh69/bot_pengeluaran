@@ -424,6 +424,52 @@ async function cleanupOldData(req, res) {
     }
 }
 
+/**
+ * Logout WhatsApp Bot (admin only)
+ */
+async function logoutBot(req, res) {
+    try {
+        if (!global.whatsappClient) {
+            return res.status(400).json({
+                success: false,
+                message: 'WhatsApp Bot tidak aktif'
+            });
+        }
+
+        console.log('🔄 Manually logging out WhatsApp Bot...');
+
+        await global.whatsappClient.logout();
+
+        // Wait a bit then re-initialize to generate a new QR code
+        setTimeout(async () => {
+            try {
+                console.log('🔄 Re-initializing WhatsApp Client for new QR code...');
+                await global.whatsappClient.initialize();
+            } catch (err) {
+                console.error('Failed to re-initialize after logout:', err);
+            }
+        }, 3000);
+
+        // Reset status
+        global.whatsappStatus = {
+            isReady: false,
+            qrCode: null,
+            info: null
+        };
+
+        res.json({
+            success: true,
+            message: 'WhatsApp Bot berhasil logout. Silakan scan QR code baru.'
+        });
+    } catch (error) {
+        console.error('LogoutBot error:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Error saat logout WhatsApp: ' + error.message
+        });
+    }
+}
+
 module.exports = {
     getAllUsers,
     getAllExpenses,
@@ -435,5 +481,9 @@ module.exports = {
     toggleUserStatus,
     getBotStatus,
     getDatabaseStats,
-    cleanupOldData
+    cleanupOldData,
+    logoutBot
 };
+
+
+

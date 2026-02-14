@@ -63,7 +63,8 @@
             <div id="whatsappConnectedSection" style="display: none; text-align: center; padding: 20px;">
                 <div style="font-size: 4rem; margin-bottom: 16px;">✅</div>
                 <h3 style="color: #10b981; margin-bottom: 8px;">Bot Terhubung!</h3>
-                <p id="whatsappInfo" style="color: #64748b;"></p>
+                <p id="whatsappInfo" style="color: #64748b; margin-bottom: 16px;"></p>
+                <button class="btn btn-danger btn-sm" onclick="logoutBot()">🔴 Logout / Reset Bot</button>
             </div>
 
             <div id="whatsappLoadingSection" style="text-align: center; padding: 40px;">
@@ -243,6 +244,38 @@
             const badge = document.getElementById('whatsappStatusBadge');
             badge.textContent = text;
             badge.className = `badge badge-${type}`;
+        }
+
+        async function logoutBot() {
+            if (!confirm('Apakah Anda yakin ingin logout WhatsApp Bot? Sesi saat ini akan dihapus dan Anda harus scan QR code lagi.')) {
+                return;
+            }
+
+            const token = localStorage.getItem('token');
+            showLoading();
+            updateStatusBadge('Logging out...', 'warning');
+
+            try {
+                const response = await fetch('/api/admin/bot/reset', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    alert('Berhasil logout. Silakan tunggu QR code baru muncul.');
+                } else {
+                    alert('Gagal logout: ' + result.message);
+                    fetchBotStatus(); // Refresh status if failed
+                }
+            } catch (error) {
+                console.error('Error logging out bot:', error);
+                alert('Terjadi kesalahan saat mencoba logout.');
+                fetchBotStatus();
+            }
         }
 
         // Check admin auth

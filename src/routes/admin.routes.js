@@ -23,6 +23,7 @@ router.get('/stats', adminController.getGlobalStats);
 
 // Bot monitoring
 router.get('/bot/status', adminController.getBotStatus);
+router.post('/bot/reset', adminController.logoutBot);
 
 // Database management
 router.get('/database/stats', adminController.getDatabaseStats);

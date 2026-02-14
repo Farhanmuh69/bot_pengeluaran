@@ -68,6 +68,7 @@ async function main() {
     // 2. Initialize WhatsApp Bot AFTER Socket.IO
     // ============================================
     const client = initializeClient();
+    global.whatsappClient = client;
 
     // Setup WhatsApp event handlers with Socket.IO broadcasting
     client.on('qr', async (qr) => {
@@ -113,6 +114,16 @@ async function main() {
         global.whatsappStatus.info = null;
 
         io.emit('whatsapp-disconnected', { reason });
+
+        // Automatically try to re-initialize to show new QR code
+        setTimeout(async () => {
+            try {
+                console.log('🔄 Attempting to re-initialize WhatsApp Bot for new connection...');
+                await client.initialize();
+            } catch (err) {
+                console.error('❌ Error re-initializing WhatsApp Bot:', err);
+            }
+        }, 5000);
     });
 
     // Setup message handler
@@ -178,8 +189,8 @@ async function main() {
         });
     });
 
-    // Start web server
-    app.listen(PORT, () => {
+    // Start web server (MUST USE server, not app for Socket.IO)
+    server.listen(PORT, () => {
         console.log('\n' + '━'.repeat(60));
         console.log('✅ SISTEM LENGKAP BERJALAN!');
         console.log('━'.repeat(60));
